@@ -71,6 +71,66 @@ int is_device_node(const char *path) {
         return !!(S_ISBLK(info.st_mode) || S_ISCHR(info.st_mode));
 }
 
+int is_block_node(const char *path) {
+        struct stat info;
+
+        assert(path);
+
+        if (lstat(path, &info) < 0)
+                return -errno;
+
+        return !!(S_ISBLK(info.st_mode));
+}
+
+int is_char_node(const char *path) {
+        struct stat info;
+
+        assert(path);
+
+        if (lstat(path, &info) < 0)
+                return -errno;
+
+        return !!(S_ISCHR(info.st_mode));
+}
+
+int is_fifo(const char *path) {
+        struct stat info;
+
+        assert(path);
+
+        if (lstat(path, &info) < 0)
+                return -errno;
+
+        return !!(S_ISFIFO(info.st_mode));
+}
+
+int is_reg(const char* path, bool follow) {
+        struct stat st;
+        int r;
+
+        assert(path);
+
+        if (follow)
+                r = stat(path, &st);
+        else
+                r = lstat(path, &st);
+        if (r < 0)
+                return -errno;
+
+        return !!S_ISREG(st.st_mode);
+}
+
+int is_sock(const char* path) {
+        struct stat info;
+
+        assert(path);
+
+        if (lstat(path, &info) < 0)
+                return -errno;
+
+        return !!S_ISSOCK(info.st_mode);
+}
+
 int dir_is_empty(const char *path) {
         _cleanup_closedir_ DIR *d;
         struct dirent *de;

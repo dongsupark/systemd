@@ -31,6 +31,11 @@
 int is_symlink(const char *path);
 int is_dir(const char *path, bool follow);
 int is_device_node(const char *path);
+int is_block_node(const char *path);
+int is_char_node(const char *path);
+int is_fifo(const char *path);
+int is_reg(const char* path, bool follow);
+int is_sock(const char* path);
 
 int dir_is_empty(const char *path);
 
