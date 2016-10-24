@@ -33,6 +33,7 @@
 #ifdef HAVE_SECCOMP
 #include "seccomp-util.h"
 #endif
+#include "stat-util.h"
 #include "test-helper.h"
 #include "unit.h"
 #include "util.h"
@@ -68,6 +69,18 @@ static void check(Manager *m, Unit *unit, int status_expected, int code_expected
         exec_status_dump(&service->main_exec_status, stdout, "\t");
         assert_se(service->main_exec_status.status == status_expected);
         assert_se(service->main_exec_status.code == code_expected);
+}
+
+static bool is_inaccessible_available(void) {
+        if (is_reg("/run/systemd/inaccessible/reg", true) <= 0 ||
+            is_dir("/run/systemd/inaccessible/dir", true) <= 0 ||
+            is_block_node("/run/systemd/inaccessible/blk") <= 0 ||
+            is_char_node("/run/systemd/inaccessible/chr") <= 0 ||
+            is_fifo("/run/systemd/inaccessible/fifo") <= 0 ||
+            is_sock("/run/systemd/inaccessible/sock") <= 0) {
+                return false;
+        }
+        return true;
 }
 
 static void test(Manager *m, const char *unit_name, int status_expected, int code_expected) {
@@ -129,6 +142,11 @@ static void test_exec_privatedevices(Manager *m) {
                 log_notice("testing in container, skipping private device tests");
                 return;
         }
+        if (!is_inaccessible_available()) {
+                log_notice("testing without inaccessible, skipping private device tests");
+                return;
+        }
+
         test(m, "exec-privatedevices-yes.service", 0, CLD_EXITED);
         test(m, "exec-privatedevices-no.service", 0, CLD_EXITED);
 }
@@ -138,6 +156,11 @@ static void test_exec_privatedevices_capabilities(Manager *m) {
                 log_notice("testing in container, skipping private device tests");
                 return;
         }
+        if (!is_inaccessible_available()) {
+                log_notice("testing without inaccessible, skipping private device tests");
+                return;
+        }
+
         test(m, "exec-privatedevices-yes-capability-mknod.service", 0, CLD_EXITED);
         test(m, "exec-privatedevices-no-capability-mknod.service", 0, CLD_EXITED);
         test(m, "exec-privatedevices-yes-capability-sys-rawio.service", 0, CLD_EXITED);
@@ -147,6 +170,10 @@ static void test_exec_privatedevices_capabilities(Manager *m) {
 static void test_exec_protectkernelmodules(Manager *m) {
         if (detect_container() > 0) {
                 log_notice("testing in container, skipping protectkernelmodules tests");
+                return;
+        }
+        if (!is_inaccessible_available()) {
+                log_notice("testing without inaccessible, skipping protectkernelmodules tests");
                 return;
         }
 
