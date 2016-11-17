@@ -1232,6 +1232,20 @@ static int userns_mkdir(const char *root, const char *path, mode_t mode, uid_t u
         return userns_lchown(q, uid, gid);
 }
 
+static int userns_mknod(const char *root, const char *path, mode_t mode, dev_t dev) {
+        const char *p;
+
+        p = prefix_roota(root, path);
+        return mknod(p, mode, dev);
+}
+
+static int userns_mkfifo(const char *root, const char *path, mode_t mode) {
+        const char *p;
+
+        p = prefix_roota(root, path);
+        return mkfifo(p, mode);
+}
+
 static int setup_timezone(const char *dest) {
         _cleanup_free_ char *p = NULL, *q = NULL;
         const char *where, *check, *what;
@@ -1787,6 +1801,27 @@ static int setup_propagate(const char *root) {
         /* machined will MS_MOVE into that directory, and that's only
          * supported for non-shared mounts. */
         return mount_verbose(LOG_ERR, NULL, q, NULL, MS_SLAVE, NULL);
+}
+
+static int setup_inaccessible(const char *root) {
+        /* In case of non-user-namespace, we just need to make mount_setup()
+         * (in src/core/mount-setup.c) create inaccessible files, like other
+         * cases. */
+        if (arg_start_mode != START_BOOT || arg_userns_mode == USER_NAMESPACE_NO)
+                return 0;
+
+        (void) userns_mkdir(root, "/run/systemd/system", 0755, 0, 0);
+        (void) userns_mkdir(root, "/run/systemd/inaccessible", 0000, 0, 0);
+
+        /* Set up inaccessible items */
+        (void) userns_mknod(root, "/run/systemd/inaccessible/blk", S_IFBLK | 0000, makedev(0, 0));
+        (void) userns_mknod(root, "/run/systemd/inaccessible/chr", S_IFCHR | 0000, makedev(0, 0));
+        (void) userns_mkdir(root, "/run/systemd/inaccessible/dir", 0000, 0, 0);
+        (void) userns_mkfifo(root, "/run/systemd/inaccessible/fifo", 0000);
+        (void) userns_mknod(root, "/run/systemd/inaccessible/reg", S_IFREG | 0000, 0);
+        (void) userns_mknod(root, "/run/systemd/inaccessible/sock", S_IFSOCK | 0000, 0);
+
+        return 0;
 }
 
 static int setup_image(char **device_path, int *loop_nr) {
@@ -3099,6 +3134,10 @@ static int outer_child(
                 return r;
 
         r = setup_propagate(directory);
+        if (r < 0)
+                return r;
+
+        r = setup_inaccessible(directory);
         if (r < 0)
                 return r;
 

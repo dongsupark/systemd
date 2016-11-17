@@ -401,6 +401,13 @@ int mount_setup(bool loaded_policy) {
                 if (mount(NULL, "/", NULL, MS_REC|MS_SHARED, NULL) < 0)
                         log_warning_errno(errno, "Failed to set up the root directory for shared mount propagation: %m");
 
+        /* In case of user namespace, inaccessible files should be
+         * created from outer_child() in src/nspawn/nspawn.c, so that
+         * both blk and chr could be also created without being denied by
+         * vfs_mknod() in the Linux Kernel. */
+        if (detect_container() > 0 && running_in_userns() > 0)
+                return 0;
+
         /* Create a few directories we always want around, Note that
          * sd_booted() checks for /run/systemd/system, so this mkdir
          * really needs to stay for good, otherwise software that
