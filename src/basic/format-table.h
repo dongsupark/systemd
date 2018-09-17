@@ -60,3 +60,5 @@ static inline TableCell* TABLE_HEADER_CELL(size_t i) {
 
 size_t table_get_rows(Table *t);
 size_t table_get_columns(Table *t);
+size_t table_get_maximum_width(Table *t);
+int table_convert_to_wide(Table *t);

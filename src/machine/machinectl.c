@@ -251,6 +251,9 @@ static int show_table(Table *table, const char *word) {
 
                 table_set_header(table, arg_legend);
 
+                if (arg_full)
+                        table_set_width(table, table_get_maximum_width(table) + 1);
+
                 r = table_print(table, NULL);
                 if (r < 0)
                         return log_error_errno(r, "Failed to show table: %m");
@@ -328,7 +331,7 @@ static int list_machines(int argc, char *argv[], void *userdata) {
                                 arg_addrs,
                                 &addresses);
 
-                r = table_add_many(table, false,
+                r = table_add_many(table, arg_full,
                                    TABLE_STRING, name,
                                    TABLE_STRING, class,
                                    TABLE_STRING, empty_to_dash(service),
@@ -337,6 +340,12 @@ static int list_machines(int argc, char *argv[], void *userdata) {
                                    TABLE_STRING, empty_to_dash(addresses));
                 if (r < 0)
                         return log_error_errno(r, "Failed to add table row: %m");
+        }
+
+        if (arg_full) {
+                r = table_convert_to_wide(table);
+                if (r < 0)
+                        return log_error_errno(r, "Failed to convert to a wide table: %m");
         }
 
         r = sd_bus_message_exit_container(reply);
@@ -395,7 +404,7 @@ static int list_images(int argc, char *argv[], void *userdata) {
                 if (name[0] == '.' && !arg_all)
                         continue;
 
-                r = table_add_many(table, false,
+                r = table_add_many(table, arg_full,
                                    TABLE_STRING, name,
                                    TABLE_STRING, type);
                 if (r < 0)
@@ -412,12 +421,18 @@ static int list_images(int argc, char *argv[], void *userdata) {
                                 return log_error_errno(r, "Failed to set table cell color: %m");
                 }
 
-                r = table_add_many(table, false,
+                r = table_add_many(table, arg_full,
                                    TABLE_SIZE, size,
                                    TABLE_TIMESTAMP, crtime,
                                    TABLE_TIMESTAMP, mtime);
                 if (r < 0)
                         return log_error_errno(r, "Failed to add table row: %m");
+        }
+
+        if (arg_full) {
+                r = table_convert_to_wide(table);
+                if (r < 0)
+                        return log_error_errno(r, "Failed to convert to a wide table: %m");
         }
 
         r = sd_bus_message_exit_container(reply);
